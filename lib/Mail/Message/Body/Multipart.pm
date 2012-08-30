@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message::Body::Multipart;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Message::Body';
 
@@ -21,8 +21,7 @@ use Carp;
 sub init($)
 {   my ($self, $args) = @_;
     my $based = $args->{based_on};
-    $args->{mime_type} ||=
-        defined $based ? $based->mimeType : 'multipart/mixed';
+    $args->{mime_type} ||= defined $based ? $based->type : 'multipart/mixed';
 
     $self->SUPER::init($args);
 
@@ -53,9 +52,10 @@ sub init($)
             = defined $preamble ? $preamble : $based->preamble;
 
         $self->{MMBM_parts}
-            = @parts              ? \@parts
-            : $based->isMultipart ? [ $based->parts('ACTIVE') ]
-            : [];
+            = @parts ? \@parts
+            : !$args->{parts} && $based->isMultipart
+                     ? [ $based->parts('ACTIVE') ]
+            :          [];
 
         $self->{MMBM_epilogue}
             = defined $epilogue ? $epilogue : $based->epilogue;
@@ -92,7 +92,7 @@ sub clone()
 
 sub nrLines()
 {   my $self = shift;
-    my $nr   = 1;     # trailing boundary
+    my $nr   = 1;  # trailing part-sep
 
     if(my $preamble = $self->preamble)
     {   $nr += $preamble->nrLines;
@@ -104,7 +104,10 @@ sub nrLines()
         $nr++ if $part->body->endsOnNewline;
     }
 
-    if(my $epilogue = $self->epilogue) { $nr += $epilogue->nrLines }
+    if(my $epilogue = $self->epilogue)
+    {   $nr += $epilogue->nrLines;
+    }
+
     $nr;
 }
 
@@ -118,8 +121,9 @@ sub size()
     else { $bytes -= 1 }      # no leading \n
 
     $bytes += $bbytes + $_->size foreach $self->parts('ACTIVE');
-    if(my $epilogue = $self->epilogue) { $bytes += $epilogue->size }
-
+    if(my $epilogue = $self->epilogue)
+    {   $bytes += $epilogue->size;
+    }
     $bytes;
 }
 
@@ -145,10 +149,12 @@ sub lines()
     if(!@lines) { ; }
     elsif($lines[-1] =~ m/\n$/) { push @lines, "\n" }
     else { $lines[-1] .= "\n" }
-    push @lines, "--$boundary--\n";
+    push @lines, "--$boundary--";
 
-    my $epilogue = $self->epilogue;
-    push @lines, $epilogue->lines if $epilogue;
+    if(my $epilogue = $self->epilogue)
+    {   $lines[-1] .= "\n";
+        push @lines, $epilogue->lines;
+    }
 
     wantarray ? @lines : \@lines;
 }
@@ -180,7 +186,7 @@ sub print(;$)
             $part->print($out);
         }
         print $out "\n" if $count++;
-        print $out "--$boundary--\n";
+        print $out "--$boundary--";
     }
     else
     {   foreach my $part ($self->parts('ACTIVE'))
@@ -189,10 +195,13 @@ sub print(;$)
             $part->print($out);
         }
         $out->print("\n") if $count++;
-        $out->print("--$boundary--\n");
+        $out->print("--$boundary--");
     }
 
-    if(my $epilogue = $self->epilogue) { $epilogue->print($out) }
+    if(my $epilogue = $self->epilogue)
+    {   $out->print("\n");
+        $epilogue->print($out);
+    }
 
     $self;
 }
@@ -239,8 +248,11 @@ sub read($$$$)
     my $preamble = Mail::Message::Body::Lines->new(@msgopts, @sloppyopts)
        ->read($parser, $head);
 
+    $preamble->nrLines
+        or undef $preamble;
+
     $self->{MMBM_preamble} = $preamble
-        if defined $preamble && $preamble->nrLines > 0;
+        if defined $preamble;
 
     # Get the parts.
 
@@ -254,7 +266,8 @@ sub read($$$$)
          );
 
         last unless $part->readFromParser($parser, $bodytype);
-        push @parts, $part;
+        push @parts, $part
+            if $part->head->names || $part->body->size;
     }
     $self->{MMBM_parts} = \@parts;
 
@@ -264,15 +277,18 @@ sub read($$$$)
     my $epilogue = Mail::Message::Body::Lines->new(@msgopts, @sloppyopts)
         ->read($parser, $head);
 
-    $self->{MMBM_epilogue} = $epilogue
-        if defined $epilogue && $epilogue->nrLines > 0;
-
     my $end = defined $epilogue ? ($epilogue->fileLocation)[1]
-            : @parts            ? ($parts[-1]->fileLocation)[1]
+            : @parts            ? ($parts[-1]->body->fileLocation)[1]
             : defined $preamble ? ($preamble->fileLocation)[1]
             :                      $begin;
-
     $self->fileLocation($begin, $end);
+
+   $epilogue->nrLines
+        or undef $epilogue;
+
+    $self->{MMBM_epilogue} = $epilogue
+        if defined $epilogue;
+
     $self;
 }
 
@@ -377,8 +393,23 @@ sub parts(;$)
 
 sub part($) { shift->{MMBM_parts}[shift] }
 
+sub partNumberOf($)
+{   my ($self, $part) = @_;
+    my @parts = $self->parts('ACTIVE');
+    my $msg   = $self->message;
+    unless($msg)
+    {   $self->log(ERROR => 'multipart is not connected');
+        return 'ERROR';
+    }
+    my $base  = $msg->isa('Mail::Message::Part') ? $msg->partNumber.'.' : '';
+    foreach my $partnr (0..@parts)
+    {   return $base.($partnr+1)
+            if $parts[$partnr] == $part;
+    }
+    $self->log(ERROR => 'multipart is not found or not active');
+    'ERROR';
+}
 
-my $unique_boundary = time;
 
 sub boundary(;$)
 {   my $self  = shift;
@@ -389,7 +420,7 @@ sub boundary(;$)
         return $boundary if defined $boundary;
     }
 
-    my $boundary = @_ && defined $_[0] ? (shift) : "boundary-".$unique_boundary++;
+    my $boundary = @_ && defined $_[0] ? (shift) : "boundary-".int rand(1000000);
     $self->type->attribute(boundary => $boundary);
 }
 

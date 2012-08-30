@@ -1,10 +1,10 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 package Mail::Box::FastScalar;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 
 
@@ -14,11 +14,8 @@ use integer;
 
 sub new($) {
     my ($class, $ref) = @_;
-    $$ref = '' unless defined($$ref);
-    my $self = { ref => $ref, pos => 0 };
-
-    bless $self, $class;
-    return $self;
+    $$ref = '' unless defined $$ref;
+    bless { ref => $ref, pos => 0 }, $class;
 }
 
 sub autoflush() {}

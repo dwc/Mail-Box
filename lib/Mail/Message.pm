@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Reporter';
 
@@ -114,6 +114,13 @@ sub container() { undef } # overridden by Mail::Message::Part
 sub isPart() { 0 } # overridden by Mail::Message::Part
 
 
+sub partNumber()
+{   my $self = shift;
+    my $cont = $self->container;
+    $cont ? $cont->partNumber : undef;
+}
+
+
 sub toplevel() { shift } # overridden by Mail::Message::Part
 
 
@@ -183,7 +190,7 @@ sub head(;$)
         return undef;
     }
 
-    $self->log(INTERNAL => "wrong type of head for message $self")
+    $self->log(INTERNAL => "wrong type of head ($head) for message $self")
         unless ref $head && $head->isa('Mail::Message::Head');
 
     $head->message($self);
@@ -214,8 +221,8 @@ sub study($)
 
 
 sub from()
-{  my $from = shift->head->get('From') or return ();
-   map {$_->addresses} $from;
+{  my @from = shift->head->get('From') or return ();
+   map {$_->addresses} @from;
 }
 
 
@@ -283,8 +290,8 @@ sub body(;$@)
         return $body;
     }
 
-    $self->log(INTERNAL => "wrong type of body for message $rawbody")
-        unless ref $rawbody && $rawbody->isa('Mail::Message::Body');
+    ref $rawbody && $rawbody->isa('Mail::Message::Body')
+        or $self->log(INTERNAL => "wrong type of body for message $rawbody");
 
     # Bodies of real messages must be encoded for safe transmission.
     # Message parts will get encoded on the moment the whole multipart
@@ -304,15 +311,8 @@ sub body(;$@)
 
 
 sub decoded(@)
-{   my ($self, %args) = @_;
-
-    my $body    = $self->body->load or return;
-    my $decoded = $body->decoded
-      ( result_type => $args{result_type}
-      , charset     => $args{charset}
-      );
-
-    $decoded;
+{   my $body = shift->body->load;
+    $body ? $body->decoded(@_) : undef;
 }
 
 

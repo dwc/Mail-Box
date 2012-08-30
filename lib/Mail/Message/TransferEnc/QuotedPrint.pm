@@ -1,14 +1,14 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 
 use strict;
 use warnings;
 
 package Mail::Message::TransferEnc::QuotedPrint;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Message::TransferEnc';
 
@@ -17,14 +17,10 @@ use MIME::QuotedPrint;
 
 sub name() { 'quoted-printable' }
 
-#------------------------------------------
-
 sub check($@)
 {   my ($self, $body, %args) = @_;
     $body;
 }
-
-#------------------------------------------
 
 
 sub decode($@)
@@ -39,8 +35,6 @@ sub decode($@)
      );
 }
 
-#------------------------------------------
-
 
 sub encode($@)
 {   my ($self, $body, %args) = @_;
@@ -53,7 +47,5 @@ sub encode($@)
      , data              => encode_qp($body->string)
      );
 }
-
-#------------------------------------------
 
 1;

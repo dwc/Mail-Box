@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message::Body;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Reporter';
 
@@ -17,7 +17,7 @@ use Mail::Message::Body::File;
 
 use Carp;
 use Scalar::Util     qw/weaken refaddr/;
-use File::Basename   'basename';
+use File::Basename   qw/basename/;
 
 use MIME::Types;
 my $mime_types = MIME::Types->new;
@@ -67,15 +67,15 @@ sub init($)
     if(defined(my $file = $args->{file}))
     {
         if(!ref $file)
-        {    $self->_data_from_filename($file) or return;
-             $filename = $file;
+        {   $self->_data_from_filename($file) or return;
+            $filename = $file;
         }
         elsif(ref $file eq 'GLOB')
-        {    $self->_data_from_glob($file) or return }
+        {   $self->_data_from_glob($file) or return }
         elsif($file->isa('IO::Handle'))
-        {    $self->_data_from_filehandle($file) or return }
+        {   $self->_data_from_filehandle($file) or return }
         else
-        {    croak "message body: illegal datatype `".ref($file)."' for file option" }
+        {   croak "message body: illegal datatype `".ref($file)."' for file option" }
     }
     elsif(defined(my $data = $args->{data}))
     {
@@ -96,8 +96,9 @@ sub init($)
 
     # Set the content info
 
-    my ($mime, $transfer, $disp, $charset, $descr) = @$args{
-       qw/mime_type transfer_encoding disposition charset description/ }; 
+    my ($mime, $transfer, $disp, $charset, $descr, $cid) = @$args{
+       qw/mime_type transfer_encoding disposition charset
+          description content_id/ }; 
 
     if(defined $filename)
     {   $disp = Mail::Message::Field->new
@@ -121,6 +122,7 @@ sub init($)
         $transfer = $based->transferEncoding unless defined $transfer;
         $disp     = $based->disposition      unless defined $disp;
         $descr    = $based->description      unless defined $descr;
+        $cid      = $based->contentId        unless defined $cid;
 
         $self->{MMB_checked}
                = defined $args->{checked} ? $args->{checked} : $based->checked;
@@ -138,6 +140,7 @@ sub init($)
     $self->transferEncoding($transfer) if defined $transfer;
     $self->disposition($disp)          if defined $disp;
     $self->description($descr)         if defined $descr;
+    $self->contentId($cid)             if defined $cid;
     $self->type($mime);
 
     $self->{MMB_eol}   = $args->{eol} || 'NATIVE';
@@ -159,12 +162,7 @@ sub clone() {shift->notImplemented}
 
 sub decoded(@)
 {   my $self = shift;
-    $self->encode
-     ( mime_type         => 'text/plain'
-     , charset           => 'PERL'
-     , transfer_encoding => 'none'
-     , @_
-     );
+    $self->encode(charset => 'PERL', transfer_encoding => 'none', @_);
 }
 
 
@@ -195,11 +193,7 @@ sub eol(;$)
         }
     }
 
-    (ref $self)->new
-      ( based_on => $self
-      , eol      => $eol
-      , data     => $lines
-      );
+    (ref $self)->new(based_on => $self, eol => $eol, data => $lines);
 }
 
 #------------------------------------------
@@ -223,6 +217,12 @@ sub isMultipart() {0}
 
 sub isNested() {0}
 
+
+sub partNumberOf($)
+{   shift->log(ERROR => 'part number needs multi-part or nested');
+    'ERROR';
+}
+
 #------------------------------------------
 
 
@@ -233,12 +233,9 @@ sub type(;$)
     delete $self->{MMB_mime};
     my $type = defined $_[0] ? shift : 'text/plain';
 
-    $self->{MMB_type}
-      = ref $type ? $type->clone
+    $self->{MMB_type} = ref $type ? $type->clone
       : Mail::Message::Field->new('Content-Type' => $type);
 }
-
-#------------------------------------------
 
 
 sub mimeType()
@@ -287,6 +284,16 @@ sub disposition(;$)
 
     $self->{MMB_disposition} = ref $disp ? $disp->clone
        : Mail::Message::Field->new('Content-Disposition' => $disp);
+}
+
+
+sub contentId(;$)
+{   my $self = shift;
+    return $self->{MMB_id} if !@_ && $self->{MMB_id};
+
+    my $cid = defined $_[0] ? shift : 'none';
+    $self->{MMB_id} = ref $cid ? $cid->clone
+       : Mail::Message::Field->new('Content-ID' => $cid);
 }
 
 
@@ -362,6 +369,7 @@ sub contentInfoTo($)
     $head->set($self->transferEncoding);
     $head->set($self->disposition);
     $head->set($self->description);
+    $head->set($self->contentId);
     $self;
 }
 
@@ -373,6 +381,7 @@ sub contentInfoFrom($)
     $self->transferEncoding($head->get('Content-Transfer-Encoding'));
     $self->disposition($head->get('Content-Disposition'));
     $self->description($head->get('Content-Description'));
+    $self->contentId($head->get('Content-ID'));
 
     delete $self->{MMB_mime};
     $self;

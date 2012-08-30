@@ -1,19 +1,31 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message::Field::Attribute;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Reporter';
 use 5.007003;
 use Encode ();
 
 use Carp;
+
+
+use Carp 'cluck';
+use overload
+    '""' => sub {shift->value}
+  , cmp  => sub { my ($self, $other) = @_;
+      UNIVERSAL::isa($other, 'Mail::Message::Field')
+        ? (lc($_[0])->name cmp lc($_[1]->name) || $_[0]->value cmp $_[1]->value)
+        : $_[0]->value cmp $_[1]
+        }
+  , fallback => 1;
+
 
 
 sub new($$@)
@@ -37,7 +49,7 @@ sub init($$)
     $self->{MMFF_charset}  = $args->{charset}  if defined $args->{charset};
     $self->{MMFF_language} = $args->{language} if defined $args->{language};
 
-    $self->value($value)       if defined $value;
+    $self->value(defined $value ? $value : '');
     $self->addComponent($attr) unless $attr eq $name;
 
     $self;
@@ -55,7 +67,6 @@ sub value(;$)
     {   delete $self->{MMFF_cont};
         return $self->{MMFF_value} = shift;
     }
-      
     exists $self->{MMFF_value} ? $self->{MMFF_value} : $self->decode;
 }
 
@@ -193,7 +204,7 @@ sub decode()
 sub mergeComponent($)
 {   my ($self, $comp) = @_;
     my $cont  = $self->{MMFF_cont}
-       or croak "ERROR: Too late to merge: value already changed.";
+        or croak "ERROR: Too late to merge: value already changed.";
 
     defined $_ && $self->addComponent($_)
         foreach @{$comp->{MMFF_cont}};

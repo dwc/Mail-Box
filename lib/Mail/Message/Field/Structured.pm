@@ -1,27 +1,26 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message::Field::Structured;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Message::Field::Full';
 
 use Mail::Message::Field::Attribute;
+use Storable 'dclone';
 
 
 sub init($)
 {   my ($self, $args) = @_;
     $self->{MMFS_attrs} = {};
+    $self->{MMFS_datum} = $args->{datum};
 
     $self->SUPER::init($args);
-
-    $self->datum($args->{datum})
-        if defined $args->{datum};
 
     my $attr = $args->{attributes} || [];
     $attr    = [ %$attr ] if ref $attr eq 'HASH';
@@ -51,30 +50,28 @@ sub attribute($;$)
     }
 
     delete $self->{MMFF_body};
-    if(my $old =  $self->{MMFS_attrs}{$name})
-    {   $old->mergeComponent($attr);
-        return $old;
-    }
-    else
-    {   $self->{MMFS_attrs}{$name} = $attr;
-        return $attr;
-    }
+    $self->{MMFS_attrs}{$name} = $attr;
 }
 
 
 sub attributes() { values %{shift->{MMFS_attrs}} }
-
 sub beautify() { delete shift->{MMFF_body} }
+
+
+sub attrPairs() { map { $_->name, $_->value } shift->attributes }
+
+#-------------------------
 
 
 sub parse($)
 {   my ($self, $string) = @_;
+    chomp $string;
     my $datum = '';
     while(length $string && substr($string, 0, 1) ne ';')
     {   (undef, $string)  = $self->consumeComment($string);
         $datum .= $1 if $string =~ s/^([^;(]+)//;
     }
-    $self->datum($datum);
+    $self->{MMFS_datum} = $datum;
 
     my $found = '';
     while($string =~ m/\S/)
@@ -108,7 +105,7 @@ sub parse($)
 sub produceBody()
 {   my $self  = shift;
     my $attrs = $self->{MMFS_attrs};
-    my $datum = $self->datum;
+    my $datum = $self->{MMFS_datum};
 
     join '; '
        , (defined $datum ? $datum : '')
@@ -116,10 +113,11 @@ sub produceBody()
 }
 
 
-sub datum(;$)
+sub datum(@)
 {   my $self = shift;
-    @_ ? ($self->{MMFS_datum} = shift) : $self->{MMFS_datum};
+    @_ or return $self->{MMFS_datum};
+    delete $self->{MMFF_body};
+    $self->{MMFS_datum} = shift;
 }
-*body = \&datum;
 
 1;

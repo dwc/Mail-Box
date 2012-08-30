@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message::Field::Fast;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Message::Field';
 
@@ -34,29 +34,18 @@ sub new($;$@)
     $self;
 }
 
-#------------------------------------------
-
 sub clone()
 {   my $self = shift;
     bless [ @$self ], ref $self;
 }
-
-#------------------------------------------
 
 sub length()
 {   my $self = shift;
     length($self->[0]) + 1 + length($self->[1]);
 }
 
-#------------------------------------------
-
 sub name() { lc shift->[0] }
-
-#------------------------------------------
-
 sub Name() { shift->[0] }
-
-#------------------------------------------
 
 sub folded()
 {   my $self = shift;
@@ -68,8 +57,6 @@ sub folded()
     ($first, @lines);
 }
 
-#------------------------------------------
-
 sub unfoldedBody($;@)
 {   my $self = shift;
 
@@ -79,8 +66,6 @@ sub unfoldedBody($;@)
     $self->unfold($self->[1]);
 }
 
-#------------------------------------------
-
 sub foldedBody($)
 {   my ($self, $body) = @_;
     if(@_==2) { $self->[1] = $body }
@@ -89,10 +74,7 @@ sub foldedBody($)
     wantarray ? (split m/^/, $body) : $body;
 }
 
-#------------------------------------------
-
 # For performance reasons only
-
 sub print(;$)
 {   my $self = shift;
     my $fh   = shift || select;
@@ -100,7 +82,5 @@ sub print(;$)
     else                  { $fh->print($self->[0].':'.$self->[1]) }
     $self;
 }
-
-#------------------------------------------
 
 1;

@@ -1,11 +1,11 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 
 package Mail::Box::POP3;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Box::Net';
 
@@ -102,8 +102,8 @@ sub update() {shift->notImplemented}
 #-------------------------------------------
 
 
-sub popClient()
-{   my $self = shift;
+sub popClient(%)
+{   my ($self, %args) = @_;
 
     return $self->{MBP_client}
         if defined $self->{MBP_client};
@@ -117,6 +117,7 @@ sub popClient()
       , hostname     => $self->{MBN_hostname}
       , port         => $self->{MBN_port}
       , authenticate => $self->{MBP_auth}
+      , use_ssl      => $args{use_ssl}
       );
 
     $self->log(ERROR => "Cannot create POP3 client for $self.")

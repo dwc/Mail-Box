@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -T
+#!/usr/bin/env perl
 #
 # Test the creation of forwarded messages
 #
@@ -147,7 +147,7 @@ my $fwd = $msg->forwardAttach(preamble => $preamble, To => 'us');
 
 ok(defined $fwd,                        "create forwardAttach");
 isa_ok($fwd, 'Mail::Message');
-is(reproducable_text($fwd->string), <<ATTACH);
+is(reproducable_text($fwd->string."\n"), <<ATTACH);
 From: you
 To: us
 Subject: Forwarded
@@ -178,7 +178,7 @@ ATTACH
 
 my $fwd2 = $msg->forwardEncapsulate(preamble => $preamble, To => 'us');
 ok(defined $fwd2,                        "create forwardEncapsulate");
-is(reproducable_text($fwd2->string), <<ENCAPS);
+is(reproducable_text($fwd2->string."\n"), <<ENCAPS);
 From: you
 To: us
 Subject: Forwarded
@@ -199,11 +199,11 @@ Content-Type: message/rfc822
 
 To: you
 X-Loop: yes
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Message-Id: <removed>
 Date: <removed>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
 
 greetings!
 
@@ -222,7 +222,7 @@ $msg    = Mail::Message->buildFromBody($multi, To => 'you');
 ok(defined $msg,                    'created complex multipart');
 my $fwd3 = $msg->forwardAttach(preamble => $preamble, To => 'us');
 
-is(reproducable_text($fwd3->string), <<ATTACH);
+is(reproducable_text($fwd3->string."\n"), <<ATTACH);
 From: you
 To: us
 Subject: Forwarded
@@ -268,7 +268,7 @@ my $fwd4 = $msg->forwardInline
  );
 
 #$fwd4->print(\*STDERR);
-is(reproducable_text($fwd4->string), <<'EXPECTED');
+is(reproducable_text($fwd4->string."\n"), <<'EXPECTED');
 From: you
 To: everyone
 Subject: Forwarded

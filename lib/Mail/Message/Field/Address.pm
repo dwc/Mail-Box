@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message::Field::Address;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Identity';
 
@@ -17,8 +17,9 @@ my $format = 'Mail::Message::Field::Full';
 
 
 use overload
-    '""' => 'string'
+      '""' => 'string'
     , bool => sub {1}
+    , cmp  => sub { lc($_[0]->address) eq lc($_[1]) }
     ;
 
 #------------------------------------------
@@ -78,7 +79,5 @@ sub string()
 
     join ' ', @parts;
 }
-
-#------------------------------------------
 
 1;

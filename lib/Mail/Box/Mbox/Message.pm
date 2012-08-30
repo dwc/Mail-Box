@@ -1,17 +1,15 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 
 use strict;
 package Mail::Box::Mbox::Message;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Box::File::Message';
 
-
-#-------------------------------------------
 
 sub head(;$$)
 {   my $self  = shift;
@@ -24,8 +22,6 @@ sub head(;$$)
     $head;
 }
 
-#-------------------------------------------
-
 sub label(@)
 {   my $self   = shift;
     $self->loadHead;    # be sure the status fields have been read
@@ -33,14 +29,10 @@ sub label(@)
     $return;
 }
 
-#-------------------------------------------
-
 sub labels(@)
 {   my $self   = shift;
     $self->loadHead;    # be sure the status fields have been read
     $self->SUPER::labels(@_);
 }
-
-#------------------------------------------
 
 1;

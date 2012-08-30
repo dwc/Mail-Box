@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Box::Parser::Perl;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Box::Parser';
 
@@ -110,7 +110,7 @@ sub _is_good_end($)
     return 1 unless defined $line;
 
         substr($line, 0, length $sep) eq $sep
-    && ($sep ne 'From ' || $line =~ m/ (19[789]|20[01])\d\b/ );
+    && ($sep ne 'From ' || $line =~ m/ (?:19[6-9]|20[0-2])[0-9]\b/ );
 }
 
 sub readSeparator()
@@ -162,8 +162,6 @@ sub _read_stripped_lines(;$$)
                 $file->setpos($where);
                 $msgend = $file->tell;
                 last LINE;
-
-                last LINE;
             }
 
             push @$lines, $line;
@@ -180,12 +178,14 @@ sub _read_stripped_lines(;$$)
     }
 
     my $bodyend = $file->tell;
-
-    if($self->{MBPP_strip_gt})
-    {   map { s/^\>(\>*From\s)/$1/ } @$lines;
+    if($lines)
+    {   if($self->{MBPP_strip_gt})
+        {   s/^\>(\>*From\s)/$1/ for @$lines;
+        }
+        unless($self->{MBPP_trusted})
+        {   s/\015$// for @$lines;
+        }
     }
-  
-    unless($self->{MBPP_trusted}) { s/\015$// for @$lines }
 #warn "($bodyend, $msgend, ".@$lines, ")\n";
 
     ($bodyend, $lines, $msgend);

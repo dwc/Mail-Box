@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -T
+#!/usr/bin/env perl
 #
 # Test processing of multipart message bodies.
 #
@@ -9,7 +9,7 @@ use warnings;
 use lib qw(. .. tests);
 use Tools;
 
-use Test::More tests => 30;
+use Test::More tests => 33;
 use IO::Scalar;
 
 use Mail::Message::Body::Lines;
@@ -24,7 +24,7 @@ my $body = Mail::Message::Body::Multipart->new
 is($body->boundary, 'xyz');
 $body->boundary('part-separator');
 is($body->boundary, 'part-separator');
-is($body->mimeType, 'multipart/mixed');
+is($body->mimeType, 'multipart/mixed', 'is multipart mixed');
 
 my $h1 = Mail::Message::Head::Complete->new;
 
@@ -44,7 +44,7 @@ my $p1 = Mail::Message->new(head => $h1);
 is($b1->charset, 'PERL');
 my $b1b = $p1->body($b1);
 is($b1b->charset, 'utf-8');
-$p1->print;
+#$p1->print;
 
 is($p1->get('Content-Transfer-Encoding'), '8bit');
 ok(! defined $p1->get('Content-Disposition'));
@@ -71,7 +71,7 @@ my $fakeout;
 my $g = IO::Scalar->new(\$fakeout);
 cmp_ok($body->parts, "==", 0);
 $body->print($g);
-is($fakeout, "--part-separator--\n");
+is($fakeout, "--part-separator--");
 
 # First attachment
 
@@ -82,7 +82,7 @@ ok($newbody != $body);
 cmp_ok($newbody->parts, "==", 1);
 $newbody->print($g);
 
-compare_message_prints($fakeout, <<'EXPECTED', 'print with attachment');
+compare_message_prints($fakeout."\n", <<'EXPECTED', 'print with attachment');
 --part-separator
 Content-Type: text/html; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -101,7 +101,7 @@ cmp_ok($newerbody->parts, "==", 2);
 
 $fakeout = '';
 $newerbody->print($g);
-compare_message_prints($fakeout, <<'EXPECTED', 'print with two attachments');
+compare_message_prints($fakeout."\n", <<'EXPECTED', 'print with two attachments');
 --part-separator
 Content-Type: text/html; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -204,12 +204,19 @@ p2 l4
 epilogue
 EXPECTED
 
+### since 2.106: check partnumbers
+my $pn = $message->partNumber;
+defined $pn or $pn = 'undef';
+cmp_ok($pn, 'eq', 'undef', 'partnr of top is undef');
+cmp_ok($message->body->part(0)->partNumber, 'eq', '1', 'partNumber 1');
+cmp_ok($message->body->part(1)->partNumber, 'eq', '2', 'partNumber 2');
+
 my $m1 = Mail::Message->buildFromBody($body, From => 'me', To => 'you',
    Date => 'now', 'Message-Id' => '<simple>');
 
 $fakeout = '';
 $m1->print($g);
-compare_message_prints($fakeout, <<'EXPECTED', 'build from multipart body');
+compare_message_prints($fakeout."\n", <<'EXPECTED', 'build from multipart body');
 From: me
 To: you
 Date: now

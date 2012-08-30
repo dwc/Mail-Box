@@ -15,7 +15,9 @@ examples/reply.pl
 examples/send.pl
 examples/smaller.pl
 examples/strip-attachments.pl
+examples/strip-spam-markup.pl
 examples/takelarge.pl
+examples/unpack.pl
 lib/Mail/Box-Cookbook.pod
 lib/Mail/Box-Index.pod
 lib/Mail/Box-Overview.pod
@@ -93,6 +95,8 @@ lib/Mail/Box/POP3.pm
 lib/Mail/Box/POP3.pod
 lib/Mail/Box/POP3/Message.pm
 lib/Mail/Box/POP3/Message.pod
+lib/Mail/Box/POP3s.pm
+lib/Mail/Box/POP3s.pod
 lib/Mail/Box/Parser.pm
 lib/Mail/Box/Parser.pod
 lib/Mail/Box/Parser/Perl.pm
@@ -177,6 +181,8 @@ lib/Mail/Message/Field/Addresses.pm
 lib/Mail/Message/Field/Addresses.pod
 lib/Mail/Message/Field/Attribute.pm
 lib/Mail/Message/Field/Attribute.pod
+lib/Mail/Message/Field/Date.pm
+lib/Mail/Message/Field/Date.pod
 lib/Mail/Message/Field/Fast.pm
 lib/Mail/Message/Field/Fast.pod
 lib/Mail/Message/Field/Flex.pm
@@ -308,6 +314,7 @@ tests/30encode/10base64.t
 tests/30encode/20eight.t
 tests/30encode/30quoted.t
 tests/30encode/40seven.t
+tests/30encode/50charset.t
 tests/30encode/90body.t
 tests/30encode/Definition.pm
 tests/31fgroups/10resent.t
@@ -398,4 +405,5 @@ tests/81bodyconv/Definition.pm
 tests/Tools.pm
 tests/folders/mbox.cpy
 tests/folders/mbox.src
-META.yml                                 Module meta-data (added by MakeMaker)
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

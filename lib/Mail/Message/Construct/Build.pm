@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 
 use strict;
 
 package Mail::Message;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 
 use Mail::Message::Head::Complete  ();
@@ -35,15 +35,16 @@ sub build(@)
       :               ();
 
     my ($head, @headerlines);
-    my ($type, $transfenc, $dispose, $descr);
+    my ($type, $transfenc, $dispose, $descr, $cid);
     while(@_)
     {   my $key = shift;
         if(ref $key && $key->isa('Mail::Message::Field'))
         {   my $name = $key->name;
-               if($name eq 'content-type')              { $type      = $key }
+               if($name eq 'content-type')        { $type    = $key }
             elsif($name eq 'content-transfer-encoding') { $transfenc = $key }
-            elsif($name eq 'content-disposition')       { $dispose   = $key }
-            elsif($name eq 'content-description')       { $descr     = $key }
+            elsif($name eq 'content-disposition') { $dispose = $key }
+            elsif($name eq 'content-description') { $descr   = $key }
+            elsif($name eq 'content-id')          { $cid     = $key }
             else { push @headerlines, $key }
             next;
         }
@@ -70,13 +71,14 @@ sub build(@)
             }
 	}
         elsif($key =~
-           m/^content\-(type|transfer\-encoding|disposition|description)$/i )
+           m/^content\-(type|transfer\-encoding|disposition|description|id)$/i )
         {   my $k     = lc $1;
             my $field = Mail::Message::Field->new($key, $value);
-               if($k eq 'type')         { $type = $field }
-            elsif($k eq 'disposition' ) { $dispose = $field }
-            elsif($k eq 'description' ) { $descr    = $field }
-            else { $transfenc = $field }
+               if($k eq 'type')        { $type    = $field }
+            elsif($k eq 'disposition') { $dispose = $field }
+            elsif($k eq 'description') { $descr   = $field }
+            elsif($k eq 'id')          { $cid     = $field }
+            else                     { $transfenc = $field }
         }
         elsif($key =~ m/^[A-Z]/)
         {   push @headerlines, $key, $value }
@@ -95,7 +97,8 @@ sub build(@)
     # Setting the type explicitly, only after the body object is finalized
     $body->type($type) if defined $type;
     $body->disposition($dispose) if defined $dispose;
-    $body->description($descr) if defined $descr;
+    $body->description($descr)   if defined $descr;
+    $body->contentId($cid)       if defined $cid;
     $body->transferEncoding($transfenc) if defined $transfenc;
 
     $class->buildFromBody($body, $head, @headerlines);

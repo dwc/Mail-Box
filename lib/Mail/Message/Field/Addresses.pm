@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message::Field::Addresses;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Message::Field::Structured';
 
@@ -24,12 +24,9 @@ my $mailbox_list = {multi => 1};
 my $mailbox      = {};
 
 my %accepted     =    # defaults to $address_list
- ( from       => $mailbox_list
- , sender     => $mailbox
- );
-
-
-#------------------------------------------
+  ( from       => $mailbox_list
+  , sender     => $mailbox
+  );
 
 sub init($)
 {   my ($self, $args) = @_;
@@ -71,8 +68,6 @@ sub addAddress(@)
     $email;
 }
 
-#------------------------------------------
-
 
 sub addGroup(@)
 {   my $self  = shift;
@@ -83,8 +78,6 @@ sub addGroup(@)
     $group;
 }
 
-#------------------------------------------
-
 
 sub group($)
 {   my ($self, $name) = @_;
@@ -92,22 +85,14 @@ sub group($)
     first { lc($_->name) eq lc($name) } $self->groups;
 }
 
-#------------------------------------------
-
 
 sub groups() { @{shift->{MMFF_groups}} }
-
-#------------------------------------------
 
 
 sub groupNames() { map {$_->name} shift->groups }
 
-#------------------------------------------
-
 
 sub addresses() { map {$_->addresses} shift->groups }
-
-#------------------------------------------
 
 
 sub addAttribute($;@)
@@ -122,6 +107,7 @@ sub addAttribute($;@)
 sub parse($)
 {   my ($self, $string) = @_;
     my ($group, $email) = ('', undef);
+    $string =~ s/\s+/ /gs;
 
     while(1)
     {   (my $comment, $string) = $self->consumeComment($string);
@@ -154,8 +140,8 @@ sub parse($)
             my $angle;
             if($string =~ s/^\s*\<([^>]*)\>//s) { $angle = $1 }
             elsif($real_phrase)
-            {   $string =~ s/^\s*\"(.*?)\r?\n//;
-                $self->log(ERROR => "Ignore unrelated phrase `$1'");
+            {   $self->log(ERROR => "Ignore unrelated phrase `$1'")
+                    if $string =~ s/^\s*\"(.*?)\r?\n//;
                 next;
             }
             elsif(defined $phrase)
@@ -170,7 +156,7 @@ sub parse($)
             $angle =~ s/^\@.*?\://;
 
             ($email, $angle) = $self->consumeAddress($angle
-                , phrase => $phrase, comment => $comment);
+              , phrase => $phrase, comment => $comment);
         }
 
         $self->addAddress($email, group => $group) if defined $email;
@@ -182,8 +168,6 @@ sub parse($)
 
    0;
 }
-
-#------------------------------------------
 
 sub produceBody()
 {  my @groups = sort {$a->name cmp $b->name} shift->groups;
@@ -199,8 +183,6 @@ sub produceBody()
    join ' ', $plain, map({$_->string} @groups);
 }
 
-#------------------------------------------
-
 
 sub consumeAddress($@)
 {   my ($self, $string, @options) = @_;
@@ -215,13 +197,11 @@ sub consumeAddress($@)
     return (undef, $string) unless defined $domain;
 
     # loccomment and domcomment ignored
-    my $email   = Mail::Message::Field::Address->new
-     ( username => $local, domain => $domain, @options);
+    my $email   = Mail::Message::Field::Address
+        ->new(username => $local, domain => $domain, @options);
 
     ($email, $shorter);
 }
-
-#------------------------------------------
 
 
 sub consumeDomain($)

@@ -1,14 +1,14 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 
 use strict;
 use warnings;
 
 package Mail::Box::Message;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Message';
 
@@ -77,9 +77,7 @@ sub seqnr(;$)
 
 sub copyTo($@)
 {   my ($self, $folder) = (shift, shift);
-    my $clone = $self->clone(@_);
-
-    $folder->addMessage($clone);
+    $folder->addMessage($self->clone(@_));
 }
 
 

@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Transport::Sendmail;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Transport::Send';
 
@@ -39,9 +39,10 @@ sub trySend($@)
     my $program = $self->{MTS_program};
     if(open(MAILER, '|-')==0)
     {   my $options = $args{sendmail_options} || [];
+        my @to = map {$_->address} $self->destinations($message, $args{to});
 
-        # {} to avoid warning
-        { exec $program, '-ti', @{$self->{MTS_opts}}, @$options; }
+        # {} to avoid warning about code after exec
+        {  exec $program, '-i', @{$self->{MTS_opts}}, @$options, @to; }
 
         $self->log(NOTICE => "Errors when opening pipe to $program: $!");
         exit 1;

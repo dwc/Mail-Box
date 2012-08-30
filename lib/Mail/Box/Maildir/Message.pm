@@ -1,14 +1,14 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 
 use strict;
 use warnings;
 
 package Mail::Box::Maildir::Message;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Box::Dir::Message';
 
@@ -50,8 +50,6 @@ sub filename(;$)
     $self->SUPER::filename($newname);
 }
 
-#-------------------------------------------
-
 
 sub guessTimestamp()
 {   my $self = shift;
@@ -73,16 +71,14 @@ sub label(@)
     $return;
 }
 
-#-------------------------------------------
-
 
 sub labelsToFilename()
 {   my $self   = shift;
     my $labels = $self->labels;
     my $old    = $self->filename;
 
-    my ($folderdir, $set, $oldname)
-      = $old =~ m!(.*)/(new|cur|tmp)/([^:]*)(\:[^:]*)?$!;
+    my ($folderdir, $set, $oldname, $oldflags)
+      = $old =~ m!(.*)/(new|cur|tmp)/(.+?)(\:2,[^:]*)?$!;
 
     my $newflags    # alphabeticly ordered!
       = ($labels->{draft}   ? 'D' : '')
@@ -99,7 +95,9 @@ sub labelsToFilename()
         $folder->modified(1) if defined $folder;
     }
 
-    my $new = File::Spec->catfile($folderdir, $newset, "$oldname:2,$newflags");
+    my $flags = $newset ne 'new' || $newflags ne '' ? ":2,$newflags"          
+              : $oldflags ? ':2,' : '';                                
+    my $new   = File::Spec->catfile($folderdir, $newset, $oldname.$flags);
 
     if($new ne $old)
     {   unless(move $old, $new)

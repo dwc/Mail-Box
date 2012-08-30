@@ -1,10 +1,11 @@
-#!/usr/bin/env perl -T
+#!/usr/bin/env perl
 #
 # Test processing of addresses
 #
 
 use strict;
 use warnings;
+use Mail::Message;
 
 package Mail::Message::Field::Addresses;   # define package name
 package main;
@@ -20,15 +21,22 @@ BEGIN {
        exit 0;
    }
 
-   eval 'require Mail::Message::Field::Addresses';
-   if($@)
-   {   plan skip_all => 'Extended attributes not available (install Encode?)';
-       exit 0;
-   }
-   else
-   {   plan tests => 96;
-   }
+   eval "use Encode";
+   plan skip_all => 'Extended attributes not available (install Encode?)'
+      if $@;
+   Encode->import('is_utf8');
+
+   eval 'use Mail::Message::Field::Addresses';
+   plan skip_all => "Mail::Message::Field::Addresses broken: $@"
+       if $@;
+
+   plan tests => 104;
 }
+
+# avoid "print of Wide characters" warning
+# http://code.google.com/p/test-more/issues/detail?id=46
+binmode Test::More->builder->output, ":utf8";
+binmode Test::More->builder->failure_output, ":utf8";
 
 my $mmfa  = 'Mail::Message::Field::Address';
 my $mmfag = 'Mail::Message::Field::AddrGroup';
@@ -231,7 +239,42 @@ Cc: Pete <pete@silly.test>, A Group: "Chris Jones" <c@public.example>,
  John <jdoe@one.test> (my dear friend), joe@example.org;
 REFOLDED
 
-__END__
-Cc:(Empty list)(start)Undisclosed recipients  :(nobody(that I know))  ;
-From  : John Doe <jdoe@machine(comment).  example>
-Mary Smith <@machine.tld:mary@example.net>, , jdoe@test   . example
+#Cc:(Empty list)(start)Undisclosed recipients  :(nobody(that I know))  ;
+#From  : John Doe <jdoe@machine(comment).  example>
+#Mary Smith <@machine.tld:mary@example.net>, , jdoe@test   . example
+
+
+# test =???= encoding in the phrase
+
+my $encd = '"=?GB2312?B?yOe6zrncwO1tbTS6w7T9tqjO78a3us2yu8Tc08PO78a3?=" <aap@noot.mies>';
+my $e = $mmfas->new(From => $encd);
+isa_ok($e, $mmfas, 'read encoded');
+@a = $e->addresses;
+cmp_ok(scalar @a, '==', 1);
+my $a    = $a[0];
+my $name = $a->name;
+cmp_ok(length $name, '==', 18, $name);
+ok(is_utf8($name), 'is utf8');
+
+# Some bug reported by Andrew 2012-07-18
+
+my $two = 'valid <valid@example.com>, more <more@example.com>';
+my $msg = Mail::Message->read(<<_MSG);
+Subject: test
+From: =?utf-8?B?6ZOg6L6J5Zu96ZmF6LSn6L+Q?=
+From: $two
+From: Jay Lundelius <<cspcccu\@yahoo.com>>
+
+hey
+_MSG
+
+{   my $head     = $msg->head;
+    my @from     = $head->study('from');  # list context
+    cmp_ok(scalar @from, '==', 3);
+    cmp_ok(scalar $from[0]->addresses, '==', 0, 'invalid address');
+    cmp_ok(scalar $from[1]->addresses, '==', 2, 'valid addresses');
+    cmp_ok(scalar $from[2]->addresses, '==', 0, 'invalid address');
+    my $from     = $head->study('from');  # scalar context
+# returns last, but only invalid
+#   is($from, $two, 'scalar');
+}

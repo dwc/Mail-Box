@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message::Field::Full;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Message::Field';
 
@@ -20,6 +20,7 @@ use Mail::Message::Field::Structured;
 use Mail::Message::Field::Unstructured;
 use Mail::Message::Field::Addresses;
 use Mail::Message::Field::URIs;
+use Mail::Message::Field::Date;
 
 my $atext = q[a-zA-Z0-9!#\$%&'*+\-\/=?^_`{|}~];  # from RFC
 my $atext_ill = q/\[\]/;     # illegal, but still used (esp spam)
@@ -33,19 +34,19 @@ use overload '""' => sub { shift->decodedBody };
 my %implementation;
 
 BEGIN {
-   $implementation{$_} = 'Addresses' foreach
-      qw/from to sender cc bcc reply-to envelope-to
+   $implementation{$_} = 'Addresses'
+      for qw/from to sender cc bcc reply-to envelope-to
          resent-from resent-to resent-cc resent-bcc resent-reply-to
          resent-sender
          x-beenthere errors-to mail-follow-up x-loop delivered-to
          original-sender x-original-sender/;
-   $implementation{$_} = 'URIs' foreach
-      qw/list-help list-post list-subscribe list-unsubscribe list-archive
-         list-owner/;
-   $implementation{$_} = 'Structured' foreach
-      qw/content-disposition content-type/;
-#  $implementation{$_} = 'Date' foreach
-#     qw/date resent-date/;
+   $implementation{$_} = 'URIs'
+      for qw/list-help list-post list-subscribe list-unsubscribe
+         list-archive list-owner/;
+   $implementation{$_} = 'Structured'
+      for qw/content-disposition content-type content-id/;
+   $implementation{$_} = 'Date'
+      for qw/date resent-date/;
 }
 
 sub new($;$$@)
@@ -61,7 +62,7 @@ sub new($;$$@)
     }
    
     return $class->SUPER::new(%args, name => $name, body => $body)
-       if $class ne __PACKAGE__;
+        if $class ne __PACKAGE__;
 
     # Look for best class to suit this field
     my $myclass = 'Mail::Message::Field::'
@@ -74,9 +75,8 @@ sub init($)
 {   my ($self, $args) = @_;
 
     $self->SUPER::init($args);
-    $self->{MMFF_name}       = $args->{name};
-
-    my $body = $args->{body};
+    $self->{MMFF_name} = $args->{name};
+    my $body           = $args->{body};
 
        if(!defined $body || !length $body || ref $body) { ; } # no body yet
     elsif(index($body, "\n") >= 0)
@@ -119,7 +119,7 @@ sub foldedBody($)
 
     if(@_==2)
     {    $self->parse($body);
-         $body =~ s/^\s*/ /;
+         $body =~ s/^\s*/ /m;
          $self->{MMFF_body} = $body;
     }
     elsif(defined($body = $self->{MMFF_body})) { ; }
@@ -296,15 +296,17 @@ sub _decoder($$$)
 }
 
 sub decode($@)
-{   my $self    = shift;
-    my @encoded = split /(\=\?[^?]*\?[bqBQ]?\?[^?]*\?\=)/, shift;
+{   my $thing   = shift;
+    my @encoded = split /(\=\?[^?\s]*\?[bqBQ]?\?[^?]*\?\=)/, shift;
+    @encoded or return '';
+
     my %args    = @_;
 
     my $is_text = defined $args{is_text} ? $args{is_text} : 1;
     my @decoded = shift @encoded;
 
     while(@encoded)
-    {   shift(@encoded) =~ /\=\?([^?\s]*)\?([^?\s]*)\?([^?\s]*)\?\=/;
+    {   shift(@encoded) =~ /\=\?([^?\s]*)\?([^?\s]*)\?([^?]*)\?\=/;
         push @decoded, _decoder $1, $2, $3;
 
         @encoded or last;
@@ -326,17 +328,18 @@ sub parse($) { shift }
 sub consumePhrase($)
 {   my ($thing, $string) = @_;
 
+    my $phrase;
     if($string =~ s/^\s*\" ((?:[^"\r\n\\]*|\\.)*) (?:\"|\s*$)//x )
-    {   (my $phrase = $1) =~ s/\\\"/"/g;
-        return ($phrase, $string);
+    {   ($phrase = $1) =~ s/\\\"/"/g;
     }
-
-    if($string =~ s/^\s*([${atext}${atext_ill}\ \t.]+)//o )
-    {   (my $phrase = $1) =~ s/\s+$//;
-        return CORE::length($phrase) ? ($phrase, $string) : (undef, $_[1]);
+    elsif($string =~ s/^\s*([${atext}${atext_ill}\ \t.]+)//o )
+    {   ($phrase = $1) =~ s/\s+$//;
+        CORE::length($phrase) or undef $phrase;
     }
-
-    (undef, $string);
+        
+      defined $phrase
+    ? ($thing->decode($phrase), $string)
+    : (undef, $string);
 }
 
 

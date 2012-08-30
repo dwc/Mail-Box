@@ -1,13 +1,13 @@
-# Copyrights 2001-2009 by Mark Overmeer.
+# Copyrights 2001-2012 by [Mark Overmeer].
 #  For other contributors see ChangeLog.
 # See the manual pages for details on the licensing terms.
-# Pod stripped from pm file by OODoc 1.06.
+# Pod stripped from pm file by OODoc 2.00.
 use strict;
 use warnings;
 
 package Mail::Message::Field;
 use vars '$VERSION';
-$VERSION = '2.093';
+$VERSION = '2.106';
 
 use base 'Mail::Reporter';
 
@@ -20,15 +20,13 @@ our %_structured;  # not to be used directly: call isStructured!
 my $default_wrap_length = 78;
 
 
-use overload qq("") => sub { $_[0]->unfoldedBody }
-           , '+0'   => sub { $_[0]->toInt || 0 }
-           , bool   => sub {1}
-           , cmp    => sub { $_[0]->unfoldedBody cmp "$_[1]" }
-           , '<=>'  => sub { $_[2]
-                           ? $_[1]        <=> $_[0]->toInt
-                           : $_[0]->toInt <=> $_[1]
-                           }
-           , fallback => 1;
+use overload
+    qq("") => sub { $_[0]->unfoldedBody }
+ , '0+'    => sub { $_[0]->toInt || 0 }
+ , bool    => sub {1}
+ , cmp     => sub { $_[0]->unfoldedBody cmp "$_[1]" }
+ , '<=>'   => sub { $_[2] ? $_[1] <=> $_[0]->toInt : $_[0]->toInt <=> $_[1] }
+ , fallback => 1;
 
 #------------------------------------------
 
@@ -42,12 +40,12 @@ sub new(@)
     $class->SUPER::new(@_);
 }
 
+
+
 #------------------------------------------
 
 
 sub length { length shift->folded }
-
-#------------------------------------------
 
 
 BEGIN {
@@ -56,7 +54,7 @@ BEGIN {
      Resent-Date Resent-From Resent-Sender Resent-To Return-Path
      List-Help List-Post List-Unsubscribe Mailing-List
      Received References Message-ID In-Reply-To
-     Content-Type Content-Disposition
+     Content-Type Content-Disposition Content-ID
      Delivered-To
      MIME-Version
      Precedence
@@ -68,16 +66,12 @@ sub isStructured(;$)
     exists $_structured{lc $name};
 }
 
-#------------------------------------------
-
 
 sub print(;$)
 {   my $self = shift;
     my $fh   = shift || select;
     $fh->print(scalar $self->folded);
 }
-
-#------------------------------------------
 
 
 sub toString(;$) {shift->string(@_)}
@@ -92,8 +86,6 @@ sub string(;$)
     wantarray ? @lines : join('', @lines);
 }
 
-#------------------------------------------
-
 
 sub toDisclose()
 {   shift->name !~ m!^(?: (?:x-)?status
@@ -103,12 +95,8 @@ sub toDisclose()
                       ) $!x;
 }
 
-#------------------------------------------
-
 
 sub nrLines() { my @l = shift->foldedBody; scalar @l }
-
-#------------------------------------------
 
 
 *size = \&length;
@@ -141,8 +129,6 @@ sub wellformedName(;$)
 
 sub folded { shift->notImplemented }
 
-#------------------------------------------
-
 
 sub body()
 {   my $self = shift;
@@ -153,17 +139,11 @@ sub body()
     $body;
 }
 
-#------------------------------------------
-
 
 sub foldedBody { shift->notImplemented }
 
-#------------------------------------------
-
 
 sub unfoldedBody { shift->notImplemented }
-
-#------------------------------------------
 
 
 sub stripCFWS($)
@@ -219,11 +199,7 @@ sub comment(;$)
     $body =~ s/.*?\;\s*// ? $body : '';
 }
 
-#------------------------------------------
-
 sub content() { shift->unfoldedBody }  # Compatibility
-
-#------------------------------------------
 
 
 sub attribute($;$)
@@ -254,7 +230,7 @@ sub attribute($;$)
     (my $quoted = $value) =~ s/(["\\])/\\$1/g;
 
     for($body)
-    {       s/\b$attr\s*=\s*"(?>[^\\"]|\\.)*"/$attr="$quoted"/i
+    {       s/\b$attr\s*=\s*"(?>[^\\"]|\\.){0,1000}"/$attr="$quoted"/i
          or s/\b$attr\s*=\s*[^;\s]*/$attr="$quoted"/i
          or do { $_ .= qq(; $attr="$quoted") }
     }
