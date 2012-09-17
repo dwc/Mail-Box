@@ -464,12 +464,13 @@ sub fetch($@)
 
 
 sub appendMessage($$)
-{   my ($self, $message, $foldername) = @_;
+{   my ($self, $message, $foldername, $date) = @_;
     my $imap   = $self->imapClient or return ();
 
     $imap->append_string
      ( $foldername, $message->string
      , $self->labelsToFlags($message->labels)
+     , $date
      );
 }
 
